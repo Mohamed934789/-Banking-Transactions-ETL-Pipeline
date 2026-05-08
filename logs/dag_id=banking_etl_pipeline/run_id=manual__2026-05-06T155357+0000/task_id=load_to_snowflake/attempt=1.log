@@ -1,0 +1,44 @@
+[2026-05-06T15:55:02.381+0000] {local_task_job_runner.py:123} INFO - ::group::Pre task execution logs
+[2026-05-06T15:55:02.455+0000] {taskinstance.py:2613} INFO - Dependencies all met for dep_context=non-requeueable deps ti=<TaskInstance: banking_etl_pipeline.load_to_snowflake manual__2026-05-06T15:53:57+00:00 [queued]>
+[2026-05-06T15:55:02.486+0000] {taskinstance.py:2613} INFO - Dependencies all met for dep_context=requeueable deps ti=<TaskInstance: banking_etl_pipeline.load_to_snowflake manual__2026-05-06T15:53:57+00:00 [queued]>
+[2026-05-06T15:55:02.486+0000] {taskinstance.py:2866} INFO - Starting attempt 1 of 1
+[2026-05-06T15:55:02.521+0000] {taskinstance.py:2889} INFO - Executing <Task(PythonOperator): load_to_snowflake> on 2026-05-06 15:53:57+00:00
+[2026-05-06T15:55:02.538+0000] {standard_task_runner.py:104} INFO - Running: ['***', 'tasks', 'run', 'banking_etl_pipeline', 'load_to_snowflake', 'manual__2026-05-06T15:53:57+00:00', '--job-id', '32', '--raw', '--subdir', 'DAGS_FOLDER/banking_etl_dag.py', '--cfg-path', '/tmp/tmpf5d6ykx_']
+[2026-05-06T15:55:02.545+0000] {standard_task_runner.py:105} INFO - Job 32: Subtask load_to_snowflake
+[2026-05-06T15:55:02.547+0000] {logging_mixin.py:190} WARNING - /home/***/.local/lib/python3.12/site-packages/***/task/task_runner/standard_task_runner.py:70 DeprecationWarning: This process (pid=1098) is multi-threaded, use of fork() may lead to deadlocks in the child.
+[2026-05-06T15:55:02.548+0000] {standard_task_runner.py:72} INFO - Started process 1099 to run task
+[2026-05-06T15:55:02.637+0000] {task_command.py:467} INFO - Running <TaskInstance: banking_etl_pipeline.load_to_snowflake manual__2026-05-06T15:53:57+00:00 [running]> on host 4295a7f0f430
+[2026-05-06T15:55:02.806+0000] {taskinstance.py:3132} INFO - Exporting env vars: AIRFLOW_CTX_DAG_OWNER='data_team' AIRFLOW_CTX_DAG_ID='banking_etl_pipeline' AIRFLOW_CTX_TASK_ID='load_to_snowflake' AIRFLOW_CTX_EXECUTION_DATE='2026-05-06T15:53:57+00:00' AIRFLOW_CTX_TRY_NUMBER='1' AIRFLOW_CTX_DAG_RUN_ID='manual__2026-05-06T15:53:57+00:00'
+[2026-05-06T15:55:02.807+0000] {taskinstance.py:731} INFO - ::endgroup::
+[2026-05-06T15:55:02.852+0000] {banking_etl_dag.py:72} INFO - === LOAD ===
+[2026-05-06T15:55:41.454+0000] {banking_etl_dag.py:83} INFO - ✓ Spark ready
+✓ Snowflake connected
+
+Loading dim_date...
+  Rows: 248
+  ✓ Done: 248 rows
+
+Loading dim_account...
+  Rows: 416
+  ✓ Done: 416 rows
+
+Loading dim_merchant...
+  Rows: 100
+  ✓ Done: 100 rows
+
+Loading dim_transaction_type...
+  Rows: 2
+  ✓ Done: 2 rows
+
+Loading fact_transactions...
+  Rows: 1000
+  ✓ Done: 1000 rows
+
+✓✓✓ Load complete!
+
+[2026-05-06T15:55:41.454+0000] {python.py:240} INFO - Done. Returned value was: None
+[2026-05-06T15:55:41.465+0000] {taskinstance.py:340} INFO - ::group::Post task execution logs
+[2026-05-06T15:55:41.466+0000] {taskinstance.py:352} INFO - Marking task as SUCCESS. dag_id=banking_etl_pipeline, task_id=load_to_snowflake, run_id=manual__2026-05-06T15:53:57+00:00, execution_date=20260506T155357, start_date=20260506T155502, end_date=20260506T155541
+[2026-05-06T15:55:41.490+0000] {local_task_job_runner.py:266} INFO - Task exited with return code 0
+[2026-05-06T15:55:41.509+0000] {taskinstance.py:3895} INFO - 0 downstream tasks scheduled from follow-on schedule check
+[2026-05-06T15:55:41.512+0000] {local_task_job_runner.py:245} INFO - ::endgroup::

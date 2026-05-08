@@ -1,0 +1,21 @@
+[2026-05-06T15:39:54.577+0000] {local_task_job_runner.py:123} INFO - ::group::Pre task execution logs
+[2026-05-06T15:39:54.628+0000] {taskinstance.py:2613} INFO - Dependencies all met for dep_context=non-requeueable deps ti=<TaskInstance: banking_etl_pipeline.extract_to_hdfs manual__2026-05-06T15:39:52.505273+00:00 [queued]>
+[2026-05-06T15:39:54.656+0000] {taskinstance.py:2613} INFO - Dependencies all met for dep_context=requeueable deps ti=<TaskInstance: banking_etl_pipeline.extract_to_hdfs manual__2026-05-06T15:39:52.505273+00:00 [queued]>
+[2026-05-06T15:39:54.657+0000] {taskinstance.py:2866} INFO - Starting attempt 1 of 1
+[2026-05-06T15:39:54.693+0000] {taskinstance.py:2889} INFO - Executing <Task(PythonOperator): extract_to_hdfs> on 2026-05-06 15:39:52.505273+00:00
+[2026-05-06T15:39:54.715+0000] {standard_task_runner.py:104} INFO - Running: ['***', 'tasks', 'run', 'banking_etl_pipeline', 'extract_to_hdfs', 'manual__2026-05-06T15:39:52.505273+00:00', '--job-id', '26', '--raw', '--subdir', 'DAGS_FOLDER/banking_etl_dag.py', '--cfg-path', '/tmp/tmp65cph8ad']
+[2026-05-06T15:39:54.723+0000] {standard_task_runner.py:105} INFO - Job 26: Subtask extract_to_hdfs
+[2026-05-06T15:39:54.724+0000] {logging_mixin.py:190} WARNING - /home/***/.local/lib/python3.12/site-packages/***/task/task_runner/standard_task_runner.py:70 DeprecationWarning: This process (pid=2071) is multi-threaded, use of fork() may lead to deadlocks in the child.
+[2026-05-06T15:39:54.725+0000] {standard_task_runner.py:72} INFO - Started process 2072 to run task
+[2026-05-06T15:39:54.816+0000] {task_command.py:467} INFO - Running <TaskInstance: banking_etl_pipeline.extract_to_hdfs manual__2026-05-06T15:39:52.505273+00:00 [running]> on host 71484ce1b037
+[2026-05-06T15:39:55.044+0000] {taskinstance.py:3132} INFO - Exporting env vars: AIRFLOW_CTX_DAG_OWNER='data_team' AIRFLOW_CTX_DAG_ID='banking_etl_pipeline' AIRFLOW_CTX_TASK_ID='extract_to_hdfs' AIRFLOW_CTX_EXECUTION_DATE='2026-05-06T15:39:52.505273+00:00' AIRFLOW_CTX_TRY_NUMBER='1' AIRFLOW_CTX_DAG_RUN_ID='manual__2026-05-06T15:39:52.505273+00:00'
+[2026-05-06T15:39:55.046+0000] {taskinstance.py:731} INFO - ::endgroup::
+[2026-05-06T15:39:55.101+0000] {banking_etl_dag.py:13} INFO - === EXTRACT ===
+[2026-05-06T15:39:55.106+0000] {banking_etl_dag.py:18} INFO - Files: 0
+[2026-05-06T15:39:55.106+0000] {banking_etl_dag.py:20} WARNING - No files in landing zone
+[2026-05-06T15:39:55.107+0000] {python.py:240} INFO - Done. Returned value was: None
+[2026-05-06T15:39:55.120+0000] {taskinstance.py:340} INFO - ::group::Post task execution logs
+[2026-05-06T15:39:55.121+0000] {taskinstance.py:352} INFO - Marking task as SUCCESS. dag_id=banking_etl_pipeline, task_id=extract_to_hdfs, run_id=manual__2026-05-06T15:39:52.505273+00:00, execution_date=20260506T153952, start_date=20260506T153954, end_date=20260506T153955
+[2026-05-06T15:39:55.168+0000] {local_task_job_runner.py:266} INFO - Task exited with return code 0
+[2026-05-06T15:39:55.204+0000] {taskinstance.py:3895} INFO - 1 downstream tasks scheduled from follow-on schedule check
+[2026-05-06T15:39:55.206+0000] {local_task_job_runner.py:245} INFO - ::endgroup::

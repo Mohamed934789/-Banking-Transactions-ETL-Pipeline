@@ -1,0 +1,37 @@
+[2026-05-05T21:53:29.760+0000] {local_task_job_runner.py:123} INFO - ::group::Pre task execution logs
+[2026-05-05T21:53:29.781+0000] {taskinstance.py:2613} INFO - Dependencies all met for dep_context=non-requeueable deps ti=<TaskInstance: banking_etl_pipeline.spark_transform manual__2026-05-05T21:53:27+00:00 [queued]>
+[2026-05-05T21:53:29.791+0000] {taskinstance.py:2613} INFO - Dependencies all met for dep_context=requeueable deps ti=<TaskInstance: banking_etl_pipeline.spark_transform manual__2026-05-05T21:53:27+00:00 [queued]>
+[2026-05-05T21:53:29.791+0000] {taskinstance.py:2866} INFO - Starting attempt 1 of 1
+[2026-05-05T21:53:29.808+0000] {taskinstance.py:2889} INFO - Executing <Task(PythonOperator): spark_transform> on 2026-05-05 21:53:27+00:00
+[2026-05-05T21:53:29.819+0000] {standard_task_runner.py:104} INFO - Running: ['***', 'tasks', 'run', 'banking_etl_pipeline', 'spark_transform', 'manual__2026-05-05T21:53:27+00:00', '--job-id', '20', '--raw', '--subdir', 'DAGS_FOLDER/banking_etl_dag.py', '--cfg-path', '/tmp/tmpikgde70n']
+[2026-05-05T21:53:29.823+0000] {standard_task_runner.py:105} INFO - Job 20: Subtask spark_transform
+[2026-05-05T21:53:29.824+0000] {logging_mixin.py:190} WARNING - /home/***/.local/lib/python3.12/site-packages/***/task/task_runner/standard_task_runner.py:70 DeprecationWarning: This process (pid=5457) is multi-threaded, use of fork() may lead to deadlocks in the child.
+[2026-05-05T21:53:29.825+0000] {standard_task_runner.py:72} INFO - Started process 5458 to run task
+[2026-05-05T21:53:29.893+0000] {task_command.py:467} INFO - Running <TaskInstance: banking_etl_pipeline.spark_transform manual__2026-05-05T21:53:27+00:00 [running]> on host 4b5a4ba9c483
+[2026-05-05T21:53:29.989+0000] {taskinstance.py:3132} INFO - Exporting env vars: AIRFLOW_CTX_DAG_OWNER='data_team' AIRFLOW_CTX_DAG_ID='banking_etl_pipeline' AIRFLOW_CTX_TASK_ID='spark_transform' AIRFLOW_CTX_EXECUTION_DATE='2026-05-05T21:53:27+00:00' AIRFLOW_CTX_TRY_NUMBER='1' AIRFLOW_CTX_DAG_RUN_ID='manual__2026-05-05T21:53:27+00:00'
+[2026-05-05T21:53:29.989+0000] {taskinstance.py:731} INFO - ::endgroup::
+[2026-05-05T21:53:30.006+0000] {banking_etl_dag.py:55} INFO - === TRANSFORM ===
+[2026-05-05T21:54:14.757+0000] {banking_etl_dag.py:66} INFO - ✓ Spark ready
+✓ Raw records: 2000
+✓ Clean records: 1000
+  Null dates:    0
+✓ dim_date:     248 rows
+✓ dim_account:  416 rows
+✓ dim_merchant: 100 rows
+✓ dim_type:     2 rows
+✓ fact:         1000 rows
+✓ Written: dim_date
+✓ Written: dim_account
+✓ Written: dim_merchant
+✓ Written: dim_transaction_type
+✓ Written: fact_transactions
+
+✓✓✓ Transform complete!
+
+[2026-05-05T21:54:14.758+0000] {python.py:240} INFO - Done. Returned value was: None
+[2026-05-05T21:54:14.780+0000] {taskinstance.py:340} INFO - ::group::Post task execution logs
+[2026-05-05T21:54:14.783+0000] {taskinstance.py:352} INFO - Marking task as SUCCESS. dag_id=banking_etl_pipeline, task_id=spark_transform, run_id=manual__2026-05-05T21:53:27+00:00, execution_date=20260505T215327, start_date=20260505T215329, end_date=20260505T215414
+[2026-05-05T21:54:14.835+0000] {local_task_job_runner.py:266} INFO - Task exited with return code 0
+[2026-05-05T21:54:14.877+0000] {standard_task_runner.py:217} INFO - Process not found (most likely exited), stop collecting metrics
+[2026-05-05T21:54:14.888+0000] {taskinstance.py:3895} INFO - 1 downstream tasks scheduled from follow-on schedule check
+[2026-05-05T21:54:14.892+0000] {local_task_job_runner.py:245} INFO - ::endgroup::

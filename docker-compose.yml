@@ -1,0 +1,315 @@
+x-airflow-common:
+  &airflow-common
+  build: .
+  image: banking-airflow:2.10.4
+  environment:
+    &airflow-common-env
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres_airflow:5432/airflow
+    AIRFLOW__CORE__FERNET_KEY: ''
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+    AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+    AIRFLOW__API__AUTH_BACKENDS: 'airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session'
+    AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
+    # Snowflake credentials — حطّهم في .env
+    SNOWFLAKE_URL: "${SNOWFLAKE_URL}"
+    SNOWFLAKE_USER: "${SNOWFLAKE_USER}"
+    SNOWFLAKE_PASSWORD: "${SNOWFLAKE_PASSWORD}"
+    SNOWFLAKE_DB: "BANKING_DWH"
+    SNOWFLAKE_SCHEMA: "STAR_SCHEMA"
+    SNOWFLAKE_WH: "COMPUTE_WH"
+  volumes:
+    - ./dags:/opt/airflow/dags
+    - ./logs:/opt/airflow/logs
+    - ./plugins:/opt/airflow/plugins
+    - ./scripts:/opt/airflow/scripts
+    - ./spark:/opt/airflow/spark
+    - ./data:/opt/airflow/data
+    - ./jars:/opt/spark/jars
+  user: "${AIRFLOW_UID:-50000}:0"
+  depends_on:
+    &airflow-common-depends-on
+    postgres_airflow:
+      condition: service_healthy
+
+networks:
+  sparknet:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.0.0/16
+
+volumes:
+  postgres-db-volume:
+  hadoop-namenode:
+  hadoop-datanode1:
+  hadoop-datanode2:
+
+services:
+
+  # ════════════════════════════════════════════════════════════
+  # AIRFLOW
+  # ════════════════════════════════════════════════════════════
+
+  postgres_airflow:
+    image: postgres:13
+    container_name: postgres_airflow
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    volumes:
+      - postgres-db-volume:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 10s
+      retries: 5
+      start_period: 5s
+    restart: always
+    networks:
+      sparknet:
+        ipv4_address: 172.30.1.14
+
+  airflow-init:
+    <<: *airflow-common
+    container_name: airflow-init
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        mkdir -p /sources/logs /sources/dags /sources/plugins
+        chown -R "${AIRFLOW_UID:-50000}:0" /sources/{logs,dags,plugins}
+        exec /entrypoint airflow version
+    environment:
+      <<: *airflow-common-env
+      _PIP_ADDITIONAL_REQUIREMENTS: ''
+      _AIRFLOW_DB_MIGRATE: 'true'
+      _AIRFLOW_WWW_USER_CREATE: 'true'
+      _AIRFLOW_WWW_USER_USERNAME: airflow
+      _AIRFLOW_WWW_USER_PASSWORD: airflow
+    user: "0:0"
+    volumes:
+      - .:/sources
+    networks:
+      sparknet:
+        ipv4_address: 172.30.1.18
+
+  airflow-webserver:
+    <<: *airflow-common
+    container_name: airflow-webserver
+    command: webserver
+    ports:
+      - "18080:8080"
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: always
+
+   
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./plugins:/opt/airflow/plugins
+      - ./scripts:/opt/airflow/scripts
+      - ./spark:/opt/airflow/spark
+      - ./data:/opt/airflow/data
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+    networks:
+      sparknet:
+        ipv4_address: 172.30.1.15
+
+  airflow-scheduler:
+    <<: *airflow-common
+    container_name: airflow-scheduler
+    command: scheduler
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8974/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: always
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./logs:/opt/airflow/logs
+      - ./plugins:/opt/airflow/plugins
+      - ./scripts:/opt/airflow/scripts
+      - ./spark:/opt/airflow/spark
+      - ./data:/opt/airflow/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+    networks:
+      sparknet:
+        ipv4_address: 172.30.1.16
+
+  airflow-triggerer:
+    <<: *airflow-common
+    container_name: airflow-triggerer
+    command: triggerer
+    restart: always
+    depends_on:
+      <<: *airflow-common-depends-on
+      airflow-init:
+        condition: service_completed_successfully
+    networks:
+      sparknet:
+        ipv4_address: 172.30.1.17
+
+  # ════════════════════════════════════════════════════════════
+  # JUPYTER — FIX: بدّلنا jupyter/pyspark-notebook (deprecated)
+  #           بـ quay.io/jupyter/pyspark-notebook اللي شغالة
+  # ════════════════════════════════════════════════════════════
+
+  jupyter:
+    image: quay.io/jupyter/pyspark-notebook:latest
+    container_name: spark-jupyter
+    ports:
+      - "8899:8888"
+      - "4040:4040"
+    volumes:
+      - ./notebooks:/home/jovyan/work
+      - ./jars:/opt/spark/jars
+      - ./data:/opt/airflow/data
+    environment:
+      - JUPYTER_ENABLE_LAB=yes
+      - GRANT_SUDO=yes
+      - SPARK_UI_PORT=4040
+      - PYSPARK_SUBMIT_ARGS=--master yarn --deploy-mode client pyspark-shell
+      - HADOOP_CONF_DIR=/etc/hadoop
+      - YARN_RESOURCEMANAGER_HOSTNAME=resourcemanager
+      - SPARK_HADOOP_FS_DEFAULTFS=hdfs://hadoop-namenode:9000
+      - ./hadoop-config:/etc/hadoop
+    user: root
+    command: start-notebook.sh --NotebookApp.token=''
+    depends_on:
+      - hadoop-namenode
+      - resourcemanager
+    networks:
+      sparknet:
+        ipv4_address: 172.30.1.13
+
+  # ════════════════════════════════════════════════════════════
+  # HADOOP CLUSTER
+  # FIX: أضفنا YARN_CONF لـ namenode وHDFS_CONF لـ datanodes
+  #      وكمان replication factor عشان 2 datanodes
+  # ════════════════════════════════════════════════════════════
+
+  hadoop-namenode:
+    image: bde2020/hadoop-namenode:2.0.0-hadoop3.2.1-java8
+    container_name: hadoop-namenode
+    environment:
+      - CLUSTER_NAME=hadoop-cluster
+      - CORE_CONF_fs_defaultFS=hdfs://hadoop-namenode:9000
+      - HDFS_CONF_dfs_namenode_rpc__address=hadoop-namenode:9000
+      - HDFS_CONF_dfs_replication=2
+      - YARN_CONF_yarn_resourcemanager_hostname=resourcemanager
+    ports:
+      - "9870:9870"
+      - "9000:9000"
+    volumes:
+      - hadoop-namenode:/hadoop/dfs/name
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9870"]
+      interval: 20s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+    networks:
+      sparknet:
+        ipv4_address: 172.30.1.21
+
+  hadoop-datanode1:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+    container_name: hadoop-datanode1
+    environment:
+      - CLUSTER_NAME=hadoop-cluster
+      - CORE_CONF_fs_defaultFS=hdfs://hadoop-namenode:9000
+      - HDFS_CONF_dfs_namenode_rpc__address=hadoop-namenode:9000
+      - HDFS_CONF_dfs_datanode_hostname=hadoop-datanode1
+      - HDFS_CONF_dfs_replication=2
+    ports:
+      - "9864:9864"
+    volumes:
+      - hadoop-datanode1:/hadoop/dfs/data
+    depends_on:
+      hadoop-namenode:
+        condition: service_healthy          # FIX: ينتظر الـ healthcheck
+    networks:
+      sparknet:
+        ipv4_address: 172.30.1.22
+
+  hadoop-datanode2:
+    image: bde2020/hadoop-datanode:2.0.0-hadoop3.2.1-java8
+    container_name: hadoop-datanode2
+    environment:
+      - CLUSTER_NAME=hadoop-cluster
+      - CORE_CONF_fs_defaultFS=hdfs://hadoop-namenode:9000
+      - HDFS_CONF_dfs_namenode_rpc__address=hadoop-namenode:9000
+      - HDFS_CONF_dfs_datanode_hostname=hadoop-datanode2
+      - HDFS_CONF_dfs_replication=2
+    ports:
+      - "9865:9864"
+    volumes:
+      - hadoop-datanode2:/hadoop/dfs/data
+    depends_on:
+      hadoop-namenode:
+        condition: service_healthy          # FIX
+    networks:
+      sparknet:
+        ipv4_address: 172.30.1.23
+
+  resourcemanager:
+    image: bde2020/hadoop-resourcemanager:2.0.0-hadoop3.2.1-java8
+    container_name: resourcemanager
+    environment:
+      - CORE_CONF_fs_defaultFS=hdfs://hadoop-namenode:9000
+      - YARN_CONF_yarn_resourcemanager_hostname=resourcemanager
+      - YARN_CONF_yarn_nodemanager_aux__services=mapreduce_shuffle
+      - YARN_CONF_yarn_log__aggregation__enable=true
+    ports:
+      - "8088:8088"
+    depends_on:
+      hadoop-namenode:
+        condition: service_healthy          # FIX
+    networks:
+      sparknet:
+        ipv4_address: 172.30.1.24
+
+  hadoop-nodemanager1:
+    image: bde2020/hadoop-nodemanager:2.0.0-hadoop3.2.1-java8
+    container_name: hadoop-nodemanager1
+    environment:
+      - CORE_CONF_fs_defaultFS=hdfs://hadoop-namenode:9000
+      - YARN_CONF_yarn_resourcemanager_hostname=resourcemanager
+      - YARN_CONF_yarn_nodemanager_aux__services=mapreduce_shuffle
+    volumes:
+      - ./notebooks:/home/jovyan/work
+    depends_on:
+      - resourcemanager
+    networks:
+      sparknet:
+        ipv4_address: 172.30.1.25
+
+  hadoop-nodemanager2:
+    image: bde2020/hadoop-nodemanager:2.0.0-hadoop3.2.1-java8
+    container_name: hadoop-nodemanager2
+    environment:
+      - CORE_CONF_fs_defaultFS=hdfs://hadoop-namenode:9000
+      - YARN_CONF_yarn_resourcemanager_hostname=resourcemanager
+      - YARN_CONF_yarn_nodemanager_aux__services=mapreduce_shuffle
+    volumes:
+      - ./notebooks:/home/jovyan/work
+    depends_on:
+      - resourcemanager
+    networks:
+      sparknet:
+        ipv4_address: 172.30.1.26
