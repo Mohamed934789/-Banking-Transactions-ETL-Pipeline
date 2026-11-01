@@ -6,6 +6,12 @@ from pyspark.sql import SparkSession
 import snowflake.connector
 from snowflake.connector.pandas_tools import write_pandas
 
+try:
+    from .warehouse_config import snowflake_options
+except ImportError:
+    from warehouse_config import snowflake_options
+options = snowflake_options()
+
 spark = SparkSession.builder \
     .appName("BankingETL-Load") \
     .master("local[*]") \
@@ -18,20 +24,15 @@ print("✓ Spark ready")
 
 HDFS_STAGED = "hdfs://hadoop-namenode:9000/banking/staged"
 
-conn = snowflake.connector.connect(
-    account  = "ZNMDVIU-VY47245",
-    user     = "MOHAMEDKASSAB",
-    password = "Mm123456789Mm@",
-    database = "BANKING_DWH",
-    schema   = "STAR_SCHEMA",
-    warehouse= "COMPUTE_WH",
-    role     = "ACCOUNTADMIN",
-)
+conn = snowflake.connector.connect(**options)
 print("✓ Snowflake connected")
 
 def load_to_snowflake(table_name):
     print(f"\nLoading {table_name}...")
     df_spark  = spark.read.parquet(f"{HDFS_STAGED}/{table_name}")
+    maximum = int(os.getenv("MAX_WAREHOUSE_BATCH_ROWS", "100000"))
+    if df_spark.count() > maximum:
+        raise ValueError("Warehouse pandas transfer exceeds configured row bound")
     df_pandas = df_spark.toPandas()
     df_pandas.columns = [col.upper() for col in df_pandas.columns]
 
@@ -50,6 +51,8 @@ def load_to_snowflake(table_name):
         overwrite=True,
         quote_identifiers=False,
     )
+    if not success or nrows != len(df_pandas):
+        raise RuntimeError("Warehouse write did not complete all expected rows")
     print(f"  ✓ Done: {nrows} rows")
 
 load_to_snowflake("dim_date")

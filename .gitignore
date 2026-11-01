@@ -1,0 +1,16 @@
+.DS_Store
+Thumbs.db
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+__pycache__/
+*.pyc
+.pytest_cache/
+.ipynb_checkpoints/
+
+logs/
+data/landing/
+.env.local
+*.log

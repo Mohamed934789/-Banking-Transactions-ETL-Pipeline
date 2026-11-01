@@ -10,46 +10,8 @@ default_args = {
 }
 
 def run_extract():
-    logging.info("=== EXTRACT ===")
-    import requests
-    from datetime import datetime as dt
-    
-    landing_files = glob.glob("/opt/airflow/data/landing/*.csv")
-    logging.info(f"Files: {len(landing_files)}")
-    if not landing_files:
-        logging.warning("No files in landing zone")
-        return
-
-    today     = dt.now().strftime("%Y-%m-%d")
-    hdfs_base = "http://hadoop-namenode:9870/webhdfs/v1"
-    hdfs_path = f"/banking/raw/date={today}"
-    user      = "root"
-
-    # عمل الـ directory
-    requests.put(
-        f"{hdfs_base}{hdfs_path}?op=MKDIRS&user.name={user}"
-    )
-    logging.info(f"HDFS dir ready: {hdfs_path}")
-
-    for f in landing_files:
-        fname = os.path.basename(f)
-
-        # الخطوة 1: ابعت الـ CREATE request وخد الـ redirect URL
-        r = requests.put(
-            f"{hdfs_base}{hdfs_path}/{fname}?op=CREATE&user.name={user}&overwrite=true",
-            allow_redirects=False
-        )
-        redirect_url = r.headers.get("Location")
-
-        # الخطوة 2: ارفع الـ file على الـ redirect URL
-        with open(f, "rb") as file_data:
-            requests.put(redirect_url, data=file_data,
-                        headers={"Content-Type": "application/octet-stream"})
-
-        os.rename(f, f"/opt/airflow/data/processed/{fname}")
-        logging.info(f"✓ {fname}")
-
-    logging.info("Extract complete")
+    from scripts.webhdfs_extract import extract
+    logging.info("Uploaded batches: %s", extract())
 
 def run_transform():
     logging.info("=== TRANSFORM ===")
@@ -66,7 +28,7 @@ def run_transform():
     logging.info(result.stdout)
     if result.returncode != 0:
         logging.error(result.stderr)
-        raise RuntimeError(result.stderr)
+        raise RuntimeError("ETL stage failed; inspect private local logs")
 
 def run_load():
     logging.info("=== LOAD ===")
@@ -83,7 +45,7 @@ def run_load():
     logging.info(result.stdout)
     if result.returncode != 0:
         logging.error(result.stderr)
-        raise RuntimeError(result.stderr)
+        raise RuntimeError("ETL stage failed; inspect private local logs")
 
 with DAG(
     dag_id      = "banking_etl_pipeline",

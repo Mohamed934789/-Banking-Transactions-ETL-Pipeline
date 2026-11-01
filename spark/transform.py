@@ -48,7 +48,7 @@ df = df.withColumn("TransactionDate",
     ))
 
 df = df.withColumn("TransactionAmount",
-        F.abs(F.col("TransactionAmount").cast(DoubleType()))) \
+        F.col("TransactionAmount").cast(DoubleType())) \
        .withColumn("AccountBalance",
         F.col("AccountBalance").cast(DoubleType())) \
        .withColumn("CustomerAge",
@@ -89,7 +89,7 @@ dim_date = df.select(
     F.date_format("TransactionDate", "MMMM").alias("month_name"),
     F.quarter("TransactionDate").alias("quarter"),
 ).dropDuplicates(["date"]) \
- .withColumn("date_id", F.monotonically_increasing_id())
+ .withColumn("date_id", F.date_format("date", "yyyyMMdd").cast("long"))
 print(f"✓ dim_date:     {dim_date.count()} rows")
 
 dim_account = df.select(
@@ -110,7 +110,7 @@ print(f"✓ dim_merchant: {dim_merchant.count()} rows")
 dim_txn_type = df.select(
     F.col("TransactionType").alias("transaction_type"),
 ).dropDuplicates(["transaction_type"]) \
- .withColumn("type_id", F.monotonically_increasing_id())
+ .withColumn("type_id", F.xxhash64("transaction_type"))
 print(f"✓ dim_type:     {dim_txn_type.count()} rows")
 
 fact = df.join(

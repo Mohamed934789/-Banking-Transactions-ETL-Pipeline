@@ -5,19 +5,20 @@ x-airflow-common:
   environment:
     &airflow-common-env
     AIRFLOW__CORE__EXECUTOR: LocalExecutor
-    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres_airflow:5432/airflow
-    AIRFLOW__CORE__FERNET_KEY: ''
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}@postgres_airflow:5432/airflow
+    AIRFLOW__CORE__FERNET_KEY: "${AIRFLOW_FERNET_KEY:?Set AIRFLOW_FERNET_KEY in .env.local}"
     AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
     AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
     AIRFLOW__API__AUTH_BACKENDS: 'airflow.api.auth.backend.basic_auth,airflow.api.auth.backend.session'
     AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: 'true'
     # Snowflake credentials — حطّهم في .env
-    SNOWFLAKE_URL: "${SNOWFLAKE_URL}"
+    SNOWFLAKE_ACCOUNT: "${SNOWFLAKE_ACCOUNT:?Set SNOWFLAKE_ACCOUNT}"
     SNOWFLAKE_USER: "${SNOWFLAKE_USER}"
     SNOWFLAKE_PASSWORD: "${SNOWFLAKE_PASSWORD}"
     SNOWFLAKE_DB: "BANKING_DWH"
     SNOWFLAKE_SCHEMA: "STAR_SCHEMA"
     SNOWFLAKE_WH: "COMPUTE_WH"
+    SNOWFLAKE_ROLE: "${SNOWFLAKE_ROLE:-BANKING_ETL}"
   volumes:
     - ./dags:/opt/airflow/dags
     - ./logs:/opt/airflow/logs
@@ -56,7 +57,7 @@ services:
     container_name: postgres_airflow
     environment:
       POSTGRES_USER: airflow
-      POSTGRES_PASSWORD: airflow
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}"
       POSTGRES_DB: airflow
     volumes:
       - postgres-db-volume:/var/lib/postgresql/data
@@ -86,8 +87,8 @@ services:
       _AIRFLOW_DB_MIGRATE: 'true'
       _AIRFLOW_WWW_USER_CREATE: 'true'
       _AIRFLOW_WWW_USER_USERNAME: airflow
-      _AIRFLOW_WWW_USER_PASSWORD: airflow
-    user: "0:0"
+      _AIRFLOW_WWW_USER_PASSWORD: "${AIRFLOW_ADMIN_PASSWORD:?Set AIRFLOW_ADMIN_PASSWORD}"
+    user: "127.0.0.1:0:0"
     volumes:
       - .:/sources
     networks:
@@ -99,7 +100,7 @@ services:
     container_name: airflow-webserver
     command: webserver
     ports:
-      - "18080:8080"
+      - "127.0.0.1:18080:8080"
     healthcheck:
       test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
       interval: 30s
@@ -108,7 +109,7 @@ services:
       start_period: 30s
     restart: always
 
-   
+
     volumes:
       - ./dags:/opt/airflow/dags
       - ./logs:/opt/airflow/logs
@@ -142,7 +143,6 @@ services:
       - ./scripts:/opt/airflow/scripts
       - ./spark:/opt/airflow/spark
       - ./data:/opt/airflow/data
-      - /var/run/docker.sock:/var/run/docker.sock
     depends_on:
       <<: *airflow-common-depends-on
       airflow-init:
@@ -173,23 +173,25 @@ services:
     image: quay.io/jupyter/pyspark-notebook:latest
     container_name: spark-jupyter
     ports:
-      - "8899:8888"
-      - "4040:4040"
+      - "127.0.0.1:8899:8888"
+      - "127.0.0.1:4040:4040"
     volumes:
       - ./notebooks:/home/jovyan/work
       - ./jars:/opt/spark/jars
       - ./data:/opt/airflow/data
     environment:
       - JUPYTER_ENABLE_LAB=yes
-      - GRANT_SUDO=yes
+      - SNOWFLAKE_ACCOUNT=${SNOWFLAKE_ACCOUNT}
+      - SNOWFLAKE_USER=${SNOWFLAKE_USER}
+      - SNOWFLAKE_PASSWORD=${SNOWFLAKE_PASSWORD}
+      - SNOWFLAKE_ROLE=${SNOWFLAKE_ROLE:-BANKING_ETL}
       - SPARK_UI_PORT=4040
       - PYSPARK_SUBMIT_ARGS=--master yarn --deploy-mode client pyspark-shell
       - HADOOP_CONF_DIR=/etc/hadoop
       - YARN_RESOURCEMANAGER_HOSTNAME=resourcemanager
       - SPARK_HADOOP_FS_DEFAULTFS=hdfs://hadoop-namenode:9000
-      - ./hadoop-config:/etc/hadoop
     user: root
-    command: start-notebook.sh --NotebookApp.token=''
+    command: start-notebook.sh --IdentityProvider.token=${JUPYTER_TOKEN:?Set JUPYTER_TOKEN}
     depends_on:
       - hadoop-namenode
       - resourcemanager
@@ -213,8 +215,8 @@ services:
       - HDFS_CONF_dfs_replication=2
       - YARN_CONF_yarn_resourcemanager_hostname=resourcemanager
     ports:
-      - "9870:9870"
-      - "9000:9000"
+      - "127.0.0.1:9870:9870"
+      - "127.0.0.1:9000:9000"
     volumes:
       - hadoop-namenode:/hadoop/dfs/name
     healthcheck:
@@ -237,7 +239,7 @@ services:
       - HDFS_CONF_dfs_datanode_hostname=hadoop-datanode1
       - HDFS_CONF_dfs_replication=2
     ports:
-      - "9864:9864"
+      - "127.0.0.1:9864:9864"
     volumes:
       - hadoop-datanode1:/hadoop/dfs/data
     depends_on:
@@ -257,7 +259,7 @@ services:
       - HDFS_CONF_dfs_datanode_hostname=hadoop-datanode2
       - HDFS_CONF_dfs_replication=2
     ports:
-      - "9865:9864"
+      - "127.0.0.1:9865:9864"
     volumes:
       - hadoop-datanode2:/hadoop/dfs/data
     depends_on:
@@ -276,7 +278,7 @@ services:
       - YARN_CONF_yarn_nodemanager_aux__services=mapreduce_shuffle
       - YARN_CONF_yarn_log__aggregation__enable=true
     ports:
-      - "8088:8088"
+      - "127.0.0.1:8088:8088"
     depends_on:
       hadoop-namenode:
         condition: service_healthy          # FIX
